@@ -5,17 +5,13 @@ require 'etc'
 class LsCommand
   def determine_option
     argv = ARGV[0]
-    contain_hidden = Dir.glob(['.*', '*']).sort
-    not_contain_hidden = Dir.glob('*').sort
-
-    return not_found_l_opt(not_contain_hidden) if argv.nil?
 
     files =
-      argv.include?('a') ? contain_hidden : not_contain_hidden
+      argv&.include?('a') ? Dir.glob(['.*', '*']).sort : Dir.glob('*').sort
 
-    files = files.reverse if argv.include?('r')
+    files = files.reverse if argv&.include?('r')
 
-    argv.include?('l') ? found_l_opt(files) : not_found_l_opt(files)
+    argv&.include?('l') ? found_l_opt(files) : not_found_l_opt(files)
   end
 
   def not_found_l_opt(files)
