@@ -4,54 +4,52 @@ require 'etc'
 
 class LsCommand
   def determine_option
-    case ARGV[0]
-    when nil
-      output_either_a_r_or_no_opt(Dir.glob('*').sort)
-    when '-a'
-      output_either_a_r_or_no_opt(Dir.glob(['.*', '*']).sort)
-    when '-r'
-      output_either_a_r_or_no_opt(Dir.glob('*').sort.reverse)
-    when '-l'
-      output_l_or_alr_opt(Dir.glob('*').sort)
-    when '-alr', '-arl', '-lra', '-lar', '-ral', '-rla'
-      output_l_or_alr_opt(Dir.glob(['.*', '*']).sort.reverse)
-    end
+    argv = ARGV[0]
+    contain_hidden = Dir.glob(['.*', '*']).sort
+    not_contain_hidden = Dir.glob('*').sort
+
+    return not_found_l_opt(not_contain_hidden) if argv.nil?
+
+    files =
+      argv.include?('a') ? contain_hidden : not_contain_hidden
+
+    files = files.reverse if argv.include?('r')
+
+    argv.include?('l') ? found_l_opt(files) : not_found_l_opt(files)
   end
 
-  def output_either_a_r_or_no_opt(file)
-    @output_file = file
+  def not_found_l_opt(files)
+    @output_files = files
     three_columns.each do |row|
-      sum = 0
-      row.each do |e|
+      row.each.with_index(1) do |e, i|
         printf("%-#{format_number_a_r_or_no_opt}s", e)
-        sum += 1
-        puts if (sum % 3).zero?
+        puts if (i % 3).zero?
       end
     end
   end
 
   def three_columns
     first_element, middle_element, last_element =
-      @output_file.each_slice(divisor).to_a
+      @output_files.each_slice(divisor).to_a
     first_element.zip(middle_element, last_element)
   end
 
   def divisor
-    quotient, remainder = @output_file.size.divmod(3)
+    quotient, remainder = @output_files.size.divmod(3)
     remainder.zero? ? quotient : quotient + 1
   end
 
   def format_number_a_r_or_no_opt
-    i = @output_file.max_by(&:size).size
+    i = @output_files.max_by(&:size).size
     i + (i % 8) + 6
   end
 
-  def output_l_or_alr_opt(file)
-    @output_file = file
+  def found_l_opt(files)
+    @output_files = files
 
     puts "total #{total_blocks}"
 
-    @output_file.each do |e|
+    @output_files.each do |e|
       file = File.stat(e.to_s)
       print(
         filetype(file.ftype),
@@ -68,12 +66,9 @@ class LsCommand
   end
 
   def total_blocks
-    sum = 0
-    @output_file.each do |e|
-      blocks = File.stat(e.to_s).blocks
-      sum += blocks
+    @output_files.sum do |e|
+      File.stat(e.to_s).blocks
     end
-    sum
   end
 
   def filetype(file)
