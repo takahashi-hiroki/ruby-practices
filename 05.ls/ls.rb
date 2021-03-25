@@ -5,21 +5,31 @@ require 'etc'
 class LsCommand
   def determine_option
     argv = ARGV[0]
-    contain_hidden = Dir.glob(['.*', '*']).sort
-    not_contain_hidden = Dir.glob('*').sort
-
-    return not_found_l_opt(not_contain_hidden) if argv.nil?
 
     files =
-      argv.include?('a') ? contain_hidden : not_contain_hidden
+      argv&.include?('a') ? Dir.glob(['.*', '*']).sort : Dir.glob('*').sort
 
-    files = files.reverse if argv.include?('r')
+    files = files.reverse if argv&.include?('r')
 
-    argv.include?('l') ? found_l_opt(files) : not_found_l_opt(files)
+    argv&.include?('l') ? found_l_opt(files) : not_found_l_opt(files)
   end
 
   def not_found_l_opt(files)
     @output_files = files
+    @output_files.size <= 2 ? output_of_two_or_fewer_files : output_three_or_more_files
+  end
+
+  def output_of_two_or_fewer_files
+    @output_files.each { |e| printf("%-#{format_number_a_r_or_no_opt}s", e) }
+    puts
+  end
+
+  def format_number_a_r_or_no_opt
+    i = @output_files.max_by(&:size).size
+    i + (i % 8) + 6
+  end
+
+  def output_three_or_more_files
     three_columns.each do |row|
       row.each.with_index(1) do |e, i|
         printf("%-#{format_number_a_r_or_no_opt}s", e)
@@ -37,11 +47,6 @@ class LsCommand
   def divisor
     quotient, remainder = @output_files.size.divmod(3)
     remainder.zero? ? quotient : quotient + 1
-  end
-
-  def format_number_a_r_or_no_opt
-    i = @output_files.max_by(&:size).size
-    i + (i % 8) + 6
   end
 
   def found_l_opt(files)
